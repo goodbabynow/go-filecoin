@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"math/big"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
 // ElectionMachine generates and validates PoSt partial tickets and PoSt
@@ -30,14 +30,14 @@ func (em ElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateA
 
 // GenerateCandidates creates candidate partial tickets for consideration in
 // block reward election
-func (em ElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos sector.SortedSectorInfo, ep *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error) {
+func (em ElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos ffi.SortedPrivateSectorInfo, ep *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error) {
 	dummyFaults := []uint64{}
 	return ep.GenerateEPostCandidates(sectorInfos, poStRand, dummyFaults)
 }
 
 // GeneratePoSt creates a PoSt proof over the input PoSt candidates.  Should
 // only be called on winning candidates.
-func (em ElectionMachine) GeneratePoSt(sectorInfo sector.SortedSectorInfo, challengeSeed []byte, winners []*proofs.EPoStCandidate, ep *proofs.ElectionPoster) ([]byte, error) {
+func (em ElectionMachine) GeneratePoSt(sectorInfo ffi.SortedPrivateSectorInfo, challengeSeed []byte, winners []*proofs.EPoStCandidate, ep *proofs.ElectionPoster) ([]byte, error) {
 	return ep.ComputeElectionPoSt(sectorInfo, challengeSeed, winners)
 }
 
@@ -76,13 +76,13 @@ func (em ElectionMachine) CandidateWins(candidate proofs.EPoStCandidate, ep *pro
 }
 
 // VerifyPoSt verifies a PoSt proof.
-func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []*proofs.EPoStCandidate, proverID address.Address) (bool, error) {
+func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos ffi.SortedPublicSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []*proofs.EPoStCandidate, proverID address.Address) (bool, error) {
 	// filter down sector infos to only those referenced by candidates
 	candidateSectorID := make(map[uint64]struct{})
 	for _, candidate := range candidates {
 		candidateSectorID[candidate.SectorID] = struct{}{}
 	}
-	var candidateSectorInfos []sector.SectorInfo
+	var candidateSectorInfos []ffi.PublicSectorInfo
 	for _, si := range allSectorInfos.Values() {
 		if _, ok := candidateSectorID[si.SectorID]; ok {
 			candidateSectorInfos = append(candidateSectorInfos, si)
@@ -92,7 +92,7 @@ func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPos
 	return ep.VerifyElectionPost(
 		ctx,
 		sectorSize,
-		sector.NewSortedSectorInfo(candidateSectorInfos...),
+		ffi.NewSortedPublicSectorInfo(candidateSectorInfos...),
 		challengeSeed,
 		proof,
 		candidates,

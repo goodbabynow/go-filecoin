@@ -3,9 +3,10 @@ package proofs
 import (
 	"context"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
 // SectorChallengeRatioDiv is the number of sectors per candidate partial
@@ -25,20 +26,20 @@ type EPoStCandidate struct {
 type ElectionPoster struct{}
 
 // VerifyElectionPost returns the validity of the input PoSt proof
-func (ep *ElectionPoster) VerifyElectionPost(ctx context.Context, sectorSize uint64, sectorInfo sector.SortedSectorInfo, challengeSeed []byte, proof []byte, candidates []*EPoStCandidate, proverID address.Address) (bool, error) {
+func (ep *ElectionPoster) VerifyElectionPost(ctx context.Context, sectorSize uint64, sectorInfo ffi.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []*EPoStCandidate, proverID address.Address) (bool, error) {
 	return true, nil
 }
 
 // ComputeElectionPoSt returns an election post proving that the partial
 // tickets are linked to the sector commitments.
-func (ep *ElectionPoster) ComputeElectionPoSt(sectorInfo sector.SortedSectorInfo, challengeSeed []byte, winners []*EPoStCandidate) ([]byte, error) {
+func (ep *ElectionPoster) ComputeElectionPoSt(sectorInfo ffi.SortedPrivateSectorInfo, challengeSeed []byte, winners []*EPoStCandidate) ([]byte, error) {
 	fakePoSt := make([]byte, 1)
 	fakePoSt[0] = 0xe
 	return fakePoSt, nil
 }
 
 // GenerateEPostCandidates generates election post candidates
-func (ep *ElectionPoster) GenerateEPostCandidates(sectorInfo sector.SortedSectorInfo, challengeSeed []byte, faults []uint64) ([]*EPoStCandidate, error) {
+func (ep *ElectionPoster) GenerateEPostCandidates(sectorInfo ffi.SortedPrivateSectorInfo, challengeSeed []byte, faults []uint64) ([]*EPoStCandidate, error) {
 	// Current fake behavior: generate one partial ticket per sector,
 	// each partial ticket is the hash of the challengeSeed and sectorID
 	var candidates []*EPoStCandidate
